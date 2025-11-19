@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Bot</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">AI Bot</div>
+      <div class="owner">孙云龙创建</div>
+      <nav class="tabs">
+        <button id="tab-chat" class="tab active">聊天</button>
+        <button id="tab-models" class="tab">模型配置</button>
+      </nav>
+    </header>
+    <main>
+      <section id="page-chat" class="page">
+        <div class="sidebar">
+          <div class="section">
+            <label>选择模型</label>
+            <select id="modelSelect"></select>
+            <button id="refreshModels">刷新</button>
+          </div>
+          <div class="convs">
+            <button id="newConv">新建会话</button>
+            <div id="convList" class="conv active">默认会话</div>
+          </div>
+        </div>
+        <div class="chat">
+          <div class="chat-info"><span id="currentModel"></span></div>
+          <div id="messages" class="messages"></div>
+          <div class="inputbar">
+            <div class="inputbar-inner">
+              <textarea id="input" placeholder="输入消息，Shift+Enter换行" rows="3"></textarea>
+              <div class="controls">
+                <div class="inline">
+                  <input type="checkbox" id="stream" checked>
+                  <label for="stream">流式输出</label>
+                </div>
+                <div>
+                  <button id="send">发送</button>
+                  <button id="stop" class="secondary">停止</button>
+                  <button id="clear" class="secondary">清空会话</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-models" class="page hidden">
+        <div class="form">
+          <div class="row"><label>直连模式</label><input id="directMode" type="checkbox"></div>
+          <div class="row"><label>模型名称</label><input id="m_name" placeholder="给你的模型起个名字"></div>
+          <div class="row"><label>Base URL</label><input id="m_baseUrl" placeholder="https://ark.cn-beijing.volces.com"></div>
+          <div class="row"><label>模型ID</label><input id="m_model" placeholder="model-id"></div>
+          <div class="row"><label>API Key</label><input id="m_apiKey" type="password" placeholder="sk-..."></div>
+          <div class="actions">
+            <button id="saveModel">保存</button>
+            <button id="saveDirect" class="secondary">保存直连</button>
+            <button id="clearDirect" class="secondary">清空直连</button>
+            <button id="shareLink" class="secondary">复制分享链接</button>
+          </div>
+        </div>
+        <div class="list">
+          <table>
+            <thead><tr><th>模型名称</th><th>模型ID</th><th>Base URL</th><th>操作</th></tr></thead>
+            <tbody id="modelsTable"></tbody>
+          </table>
+        </div>
+  </section>
+
+      
+    </main>
+  </div>
+  <script>
+    ;(function(){
+      var a=''
+      try{ a = localStorage.getItem('apiBase') || '' }catch{}
+      if(a){
+        window.API_BASE = a
+      } else if(location.protocol==='file:'){
+        window.API_BASE = 'http://localhost:3000'
+      } else {
+        window.API_BASE = ''
+      }
+    })()
+  </script>
+  <script src="./app.js"></script>
+</body>
+</html>

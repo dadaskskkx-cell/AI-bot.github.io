@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Bot 离线版</title>
+  <style>
+    * { box-sizing: border-box }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background: #0f172a; color: #e2e8f0 }
+    .app { display: flex; flex-direction: column; height: 100vh }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #1e293b; background: #0f172a }
+    .brand { font-weight: 600 }
+    main { flex: 1; display: flex; overflow: hidden }
+    .sidebar { width: 300px; padding: 16px; border-right: 1px solid #1e293b; background: #111827; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0 }
+    .section { display: grid; gap: 10px }
+    .section label { font-size: 12px; color: #94a3b8 }
+    .row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center }
+    .row input { padding: 10px; border-radius: 8px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0 }
+    .actions { display: flex; gap: 8px }
+    button { padding: 8px 12px; border-radius: 6px; border: 0; background: #3b82f6; color: #fff; cursor: pointer }
+    button.secondary { background: #374151 }
+    .chat { flex: 1; display: flex; flex-direction: column; background: #0f172a }
+    .chat-info { padding: 8px 20px; border-bottom: 1px solid #1e293b; background: #0f172a; color: #94a3b8; flex-shrink: 0; display: flex; align-items: center }
+    #currentModel { background: #0b1220; border: 1px solid #334155; color: #e2e8f0; border-radius: 999px; padding: 4px 10px; font-size: 12px }
+    .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px }
+    .bubbleRow { display: flex; align-items: flex-start; gap: 10px; width: 100% }
+    .bubbleRow.user { justify-content: flex-start; flex-direction: row-reverse }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0 }
+    .avatar.user { background: #10b981; color: #0b1220 }
+    .avatar.assistant { background: #3b82f6; color: #fff }
+    .msg { max-width: 70%; padding: 12px 14px; border-radius: 14px; white-space: pre-wrap; word-break: break-word }
+    .msg.user { background: #1e40af; color: #e0e0e0 }
+    .msg.assistant { background: #374151 }
+    .inputbar { padding: 14px; border-top: 1px solid #1e293b; background: #111827; flex-shrink: 0 }
+    .inputbar-inner { display: grid; gap: 10px; background: #1f2937; border: 1px solid #334155; border-radius: 8px; padding: 8px }
+    .inputbar textarea { width: 100%; background: transparent; border: none; color: #e2e8f0; outline: none; resize: none; font-size: 1rem; padding: 4px }
+    .controls { display: flex; justify-content: space-between; align-items: center }
+    .inline { display: flex; align-items: center; gap: 6px }
+    ::-webkit-scrollbar { width: 8px; height: 8px }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 8px }
+    ::-webkit-scrollbar-track { background: transparent }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">AI Bot 离线版</div>
+    </header>
+    <main>
+      <div class="sidebar">
+        <div class="section">
+          <div class="row"><label>Base URL</label><input id="baseUrl" placeholder="https://api.xxx.com"></div>
+          <div class="row"><label>路径</label><input id="path" placeholder="/v1/chat/completions" value="/v1/chat/completions"></div>
+          <div class="row"><label>模型ID</label><input id="model" placeholder="model-id"></div>
+          <div class="row"><label>API Key</label><input id="apiKey" type="password" placeholder="sk-..."></div>
+          <div class="actions">
+            <button id="saveCfg">保存配置</button>
+            <button id="newConv" class="secondary">新建会话</button>
+          </div>
+        </div>
+      </div>
+      <div class="chat">
+        <div class="chat-info"><span id="currentModel"></span></div>
+        <div id="messages" class="messages"></div>
+        <div class="inputbar">
+          <div class="inputbar-inner">
+            <textarea id="input" placeholder="输入消息，Shift+Enter换行" rows="3"></textarea>
+            <div class="controls">
+              <div class="inline">
+                <input type="checkbox" id="stream" checked>
+                <label for="stream">流式输出</label>
+              </div>
+              <div>
+                <button id="send">发送</button>
+                <button id="stop" class="secondary">停止</button>
+                <button id="clear" class="secondary">清空会话</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const state = { messages: [], streaming: false, controller: null }
+    const el = id => document.getElementById(id)
+    function addMessage(role, content) {
+      state.messages.push({ role, content })
+      const box = el('messages')
+      const row = document.createElement('div')
+      row.className = 'bubbleRow ' + (role==='user'?'user':'assistant')
+      const av = document.createElement('div')
+      av.className = 'avatar ' + (role==='user'?'user':'assistant')
+      const name = el('model').value.trim()
+      av.textContent = role==='user' ? '我' : (name ? name[0] : 'A')
+      const d = document.createElement('div')
+      d.className = 'msg ' + (role==='user'?'user':'assistant')
+      d.textContent = content
+      row.appendChild(av)
+      row.appendChild(d)
+      box.appendChild(row)
+      box.scrollTop = box.scrollHeight
+      return d
+    }
+    function loadCfg() {
+      try {
+        el('baseUrl').value = localStorage.getItem('offline.baseUrl') || ''
+        el('path').value = localStorage.getItem('offline.path') || '/v1/chat/completions'
+        el('model').value = localStorage.getItem('offline.model') || ''
+        el('apiKey').value = localStorage.getItem('offline.apiKey') || ''
+      } catch {}
+      const m = el('model').value.trim()
+      el('currentModel').textContent = m ? ('当前模型 · ' + m) : ''
+    }
+    function saveCfg() {
+      try {
+        localStorage.setItem('offline.baseUrl', el('baseUrl').value.trim())
+        localStorage.setItem('offline.path', el('path').value.trim())
+        localStorage.setItem('offline.model', el('model').value.trim())
+        localStorage.setItem('offline.apiKey', el('apiKey').value.trim())
+      } catch {}
+      loadCfg()
+    }
+    function clearChat() { state.messages = []; el('messages').innerHTML = '' }
+    function newConv() { clearChat() }
+    async function send() {
+      const text = el('input').value.trim()
+      if (!text || state.streaming) return
+      addMessage('user', text)
+      el('input').value = ''
+      const baseUrl = el('baseUrl').value.trim()
+      const path = el('path').value.trim() || '/v1/chat/completions'
+      const model = el('model').value.trim()
+      const apiKey = el('apiKey').value.trim()
+      const stream = el('stream').checked
+      if (!baseUrl || !model || !apiKey) { addMessage('assistant', '错误：配置不完整'); return }
+      const cleanBase = baseUrl.replace(/\/$/, '')
+      const cleanPath = ('/' + path.replace(/^\/*/, '')).replace(/\/+/, '/')
+      const url = cleanBase + cleanPath
+      const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey }
+      const payload = { model, messages: state.messages.map(m => ({ role: m.role, content: m.content })), stream: !!stream }
+      if (stream) {
+        state.streaming = true
+        state.controller = new AbortController()
+        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload), signal: state.controller.signal })
+        if (!res.ok) {
+          const t = await res.text(); addMessage('assistant', '错误：' + t); state.streaming = false; state.controller = null; return
+        }
+        const reader = res.body.getReader()
+        let acc = ''
+        const msgDiv = addMessage('assistant', '')
+        const lastMessage = state.messages[state.messages.length - 1]
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          acc += new TextDecoder().decode(value)
+          const parts = acc.split('\n')
+          acc = parts.pop()
+          parts.forEach(line => {
+            if (line.startsWith('data:')) {
+              const t = line.slice(5).trim()
+              if (t && t !== '[DONE]') {
+                try {
+                  const j = JSON.parse(t)
+                  const delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content || ''
+                  if (delta) { msgDiv.textContent += delta; lastMessage.content += delta }
+                } catch {}
+              }
+            }
+          })
+        }
+        state.streaming = false
+        state.controller = null
+      } else {
+        const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) })
+        if (!r.ok) { const t = await r.text(); addMessage('assistant', '错误：' + t); return }
+        const j = await r.json()
+        const txt = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || ''
+        addMessage('assistant', txt)
+      }
+    }
+    function stop() { if (state.controller) state.controller.abort() }
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCfg()
+      el('saveCfg').onclick = saveCfg
+      el('send').onclick = send
+      el('stop').onclick = stop
+      el('clear').onclick = clearChat
+      el('newConv').onclick = newConv
+      el('input').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } })
+    })
+  </script>
+</body>
+</html>

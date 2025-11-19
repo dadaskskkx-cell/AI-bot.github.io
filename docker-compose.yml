@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      - APP_ENC_KEY=${APP_ENC_KEY}
+      - PORT=3000
+    volumes:
+      - backend_data:/app/data
+    networks:
+      - appnet
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - appnet
+
+volumes:
+  backend_data: {}
+
+networks:
+  appnet: {}

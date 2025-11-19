@@ -1,0 +1,16 @@
+{
+  "name": "aibot-backend",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.4.0",
+    "fastify": "^4.27.0",
+    "jsonpath": "^1.1.1",
+    "nanoid": "^5.0.7"
+  }
+}
